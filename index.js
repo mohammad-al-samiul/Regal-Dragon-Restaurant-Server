@@ -21,34 +21,49 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         await client.connect();
-        
+        console.log("Database connected");
+
         const menuCollection = client.db('regalDragon').collection('menu');
 
         const reviewCollection = client.db('regalDragon').collection('reviews');
 
         const cartCollection = client.db('regalDragon').collection('carts');
 
-        //menu
-        app.get('/menu', async(req,res) => {
+
+        app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray();
             res.send(result);
         })
 
         //reviews
-        app.get('/reviews', async(req,res) => {
+        app.get('/reviews', async (req, res) => {
             const result = await reviewCollection.find().toArray();
             res.send(result);
         })
 
-        //carts
-        app.post('/carts', async(req,res) => {
+        //carts api
+        app.get('/carts', async (req, res) => {
+            const email = req.query.email;
+            //console.log(email);
+            if (!email) {
+                res.send([]);
+            }
+            const query = { email: email };
+            const result = await cartCollection.find(query).toArray();
+            res.send(result);
+
+        })
+
+        app.post('/carts', async (req, res) => {
             const item = req.body;
+            //console.log(item);
             const result = await cartCollection.insertOne(item);
             res.send(result);
         })
 
+
     } finally {
-        
+
     }
 }
 run().catch(err => {
