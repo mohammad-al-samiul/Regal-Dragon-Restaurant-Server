@@ -26,6 +26,9 @@ async function run() {
 
         const reviewCollection = client.db('regalDragon').collection('reviews');
 
+        const cartCollection = client.db('regalDragon').collection('carts');
+
+        //menu
         app.get('/menu', async(req,res) => {
             const result = await menuCollection.find().toArray();
             res.send(result);
@@ -36,6 +39,14 @@ async function run() {
             const result = await reviewCollection.find().toArray();
             res.send(result);
         })
+
+        //carts
+        app.post('/carts', async(req,res) => {
+            const item = req.body;
+            const result = await cartCollection.insertOne(item);
+            res.send(result);
+        })
+
     } finally {
         
     }
