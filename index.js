@@ -28,7 +28,18 @@ async function run() {
         const reviewCollection = client.db('regalDragon').collection('reviews');
 
         const cartCollection = client.db('regalDragon').collection('carts');
+        
+        const userCollection = client.db('regalDragon').collection('users');
 
+        //users 
+
+        app.post('/users',async(req, res) => {
+            const user = req.body;
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
+
+        //menu
 
         app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray();
@@ -48,16 +59,9 @@ async function run() {
             res.send(result);
 
         })
-        app.delete('/cart/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = {_id  : new ObjectId(id)};
-            const result = await cartCollection.deleteOne(query);
-            res.send(result);
-
-        })
+      
         app.get('/carts', async (req, res) => {
             const email = req.query.email;
-            //console.log(email);
             if (!email) {
                 res.send([]);
             }
@@ -69,9 +73,16 @@ async function run() {
 
         app.post('/carts', async (req, res) => {
             const item = req.body;
-            //console.log(item);
             const result = await cartCollection.insertOne(item);
             res.send(result);
+        })
+
+        app.delete('/cart/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = {_id  : new ObjectId(id)};
+            const result = await cartCollection.deleteOne(query);
+            res.send(result);
+
         })
 
 
