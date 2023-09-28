@@ -20,7 +20,7 @@ const client = new MongoClient(uri, {
     }
 });
 
-function verifyJWT(req,res,next) {
+function verifyJWT(req, res, next) {
     const authHeaders = req.headers.authorization;
     if (!authHeaders) {
         return res.status(401).json({ "message": "Unauthorized Access" })
@@ -53,9 +53,9 @@ async function run() {
 
         app.post('/jwt', async (req, res) => {
             const user = req.body;
-            console.log(user);
+            //console.log(user);
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '4d' });
-            console.log(token);
+            //console.log(token);
             res.send({ token });
         })
 
@@ -88,6 +88,18 @@ async function run() {
 
             const result = await userCollection.updateOne(filter, updateDoc);
             res.send(result)
+        })
+
+        app.get('/user/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            if (req.decoded.email !== email) {
+                return res.status(401).json({ "message": "unauthorized access" });
+            }
+            const query = {email : email};
+            const user = await userCollection.findOne(query);
+            const result = {admin : user?.role ==='admin'}
+            //console.log(result);
+            res.send({result});
         })
 
         app.delete('/user/delete/:id', async (req, res) => {
@@ -125,7 +137,7 @@ async function run() {
                 res.send([]);
             }
             const decodedEmail = req.decoded.email;
-            if(decodedEmail !== email){
+            if (decodedEmail !== email) {
                 return res.status(403).json({ "message": "Forbidden Access" })
             }
             const query = { email: email };
