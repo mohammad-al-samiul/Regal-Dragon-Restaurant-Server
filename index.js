@@ -31,7 +31,12 @@ async function run() {
         
         const userCollection = client.db('regalDragon').collection('users');
 
-        //users 
+        //users related apis
+
+        app.get('/users',async(req,res) => {
+            const result = await userCollection.find().toArray();
+            res.send(result);
+        })
 
         app.post('/users',async(req, res) => {
             const user = req.body;
@@ -44,20 +49,35 @@ async function run() {
             res.send(result);
         })
 
-        //menu
+        app.patch('/user/admin/:id',async(req,res) => {
+            console.log(req.params.id);
+            const filter = {
+               _id : new ObjectId(id)
+            }
+            const updateDoc = {
+                $set: {
+                  role: `admin`
+                },
+              };
+
+              const result = await userCollection.updateOne(filter,updateDoc);
+              res.send(result)
+        })
+
+        //menu related apis
 
         app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray();
             res.send(result);
         })
 
-        //reviews
+        //reviews related apis
         app.get('/reviews', async (req, res) => {
             const result = await reviewCollection.find().toArray();
             res.send(result);
         })
 
-        //carts api
+        //carts related api
         app.get('/carts', async (req, res) => {
             const query = { };
             const result = await cartCollection.find(query).toArray();
