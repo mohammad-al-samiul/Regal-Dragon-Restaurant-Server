@@ -126,9 +126,17 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/menu', async(req, res) => {
+        app.post('/menu',verifyJWT, verifyAdmin, async(req, res) => {
             const menuItem = req.body;
             const result = await menuCollection.insertOne(menuItem);
+            res.send(result);
+        })
+
+        app.delete('/menu/:id', async(req,res) => {
+            const id = req.params.id;
+            //console.log(id);
+            const query = {_id : new ObjectId(id)};
+            const result = await menuCollection.deleteOne(query);
             res.send(result);
         })
 
