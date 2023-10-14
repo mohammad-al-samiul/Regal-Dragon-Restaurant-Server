@@ -41,6 +41,16 @@ async function run() {
         await client.connect();
         console.log("Database connected");
 
+        const verifyAdmin = async (req,res, next) => {
+            const email = req.decoded.email;
+            const query = {email : email};
+            const user = await userCollection.findOne(query);
+            if(user?.role !=='admin'){
+                return res.status(401).json({"message": "forbidden"});
+            }
+            next();
+        }
+
         const menuCollection = client.db('regalDragon').collection('menu');
 
         const reviewCollection = client.db('regalDragon').collection('reviews');
@@ -51,15 +61,14 @@ async function run() {
 
         //users related apis
 
+
         app.post('/jwt', async (req, res) => {
             const user = req.body;
-            //console.log(user);
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '4d' });
-            //console.log(token);
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '10d' });
             res.send({ token });
         })
 
-        app.get('/users', async (req, res) => {
+        app.get('/users',verifyJWT,verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result);
         })
@@ -114,6 +123,12 @@ async function run() {
 
         app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray();
+            res.send(result);
+        })
+
+        app.post('/menu', async(req, res) => {
+            const menuItem = req.body;
+            const result = await menuCollection.insertOne(menuItem);
             res.send(result);
         })
 
