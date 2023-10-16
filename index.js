@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const Port = process.env.PORT || 5001;
 const app = express();
 
@@ -41,12 +43,12 @@ async function run() {
         await client.connect();
         console.log("Database connected");
 
-        const verifyAdmin = async (req,res, next) => {
+        const verifyAdmin = async (req, res, next) => {
             const email = req.decoded.email;
-            const query = {email : email};
+            const query = { email: email };
             const user = await userCollection.findOne(query);
-            if(user?.role !=='admin'){
-                return res.status(401).json({"message": "forbidden"});
+            if (user?.role !== 'admin') {
+                return res.status(401).json({ "message": "forbidden" });
             }
             next();
         }
@@ -68,7 +70,7 @@ async function run() {
             res.send({ token });
         })
 
-        app.get('/users',verifyJWT,verifyAdmin, async (req, res) => {
+        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result);
         })
@@ -104,11 +106,11 @@ async function run() {
             if (req.decoded.email !== email) {
                 return res.status(401).json({ "message": "unauthorized access" });
             }
-            const query = {email : email};
+            const query = { email: email };
             const user = await userCollection.findOne(query);
-            const result = {admin : user?.role ==='admin'}
+            const result = { admin: user?.role === 'admin' }
             //console.log(result);
-            res.send({result});
+            res.send({ result });
         })
 
         app.delete('/user/delete/:id', async (req, res) => {
@@ -126,16 +128,16 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/menu',verifyJWT, verifyAdmin, async(req, res) => {
+        app.post('/menu', verifyJWT, verifyAdmin, async (req, res) => {
             const menuItem = req.body;
             const result = await menuCollection.insertOne(menuItem);
             res.send(result);
         })
 
-        app.delete('/menu/:id', async(req,res) => {
+        app.delete('/menu/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             //console.log(id);
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await menuCollection.deleteOne(query);
             res.send(result);
         })
@@ -182,6 +184,22 @@ async function run() {
             res.send(result);
 
         })
+
+        app.post("/create-payment-intent", async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                automatic_payment_methods: {
+                    enabled: true,
+                },
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
 
 
     } finally {
