@@ -60,6 +60,10 @@ async function run() {
         const cartCollection = client.db('regalDragon').collection('carts');
 
         const userCollection = client.db('regalDragon').collection('users');
+        
+        const paymentCollection = client.db('regalDragon').collection('payments');
+        
+        
 
         //users related apis
 
@@ -185,21 +189,26 @@ async function run() {
 
         })
 
-        app.post("/create-payment-intent", async (req, res) => {
+        app.post("/create-payment-intent",verifyJWT, async (req, res) => {
             const { price } = req.body;
-            const amount = price * 100
+            const amount = price * 100;
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
-                automatic_payment_methods: {
-                    enabled: true,
-                },
+                payment_method_types: ["card"],
             });
 
             res.send({
                 clientSecret: paymentIntent.client_secret,
             });
         });
+
+        //payments related API
+        app.post('/payments', async(req,res) => {
+            const payment = req.body;
+            const result = await paymentCollection.insertOne(payment);
+            res.send(result);
+        })
 
 
     } finally {
