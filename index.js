@@ -9,8 +9,9 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Port = process.env.PORT || 5001;
 const app = express();
 
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.rqwof3p.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -60,10 +61,10 @@ async function run() {
         const cartCollection = client.db('regalDragon').collection('carts');
 
         const userCollection = client.db('regalDragon').collection('users');
-        
+
         const paymentCollection = client.db('regalDragon').collection('payments');
-        
-        
+
+
 
         //users related apis
 
@@ -189,9 +190,10 @@ async function run() {
 
         })
 
-        app.post("/create-payment-intent",verifyJWT, async (req, res) => {
+        app.post("/create-payment-intent", verifyJWT, async (req, res) => {
             const { price } = req.body;
-            const amount = price * 100;
+            const amount = parseInt(price * 100);
+            //console.log(amount);
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
@@ -204,10 +206,14 @@ async function run() {
         });
 
         //payments related API
-        app.post('/payments', async(req,res) => {
+        app.post('/payments',verifyJWT, async (req, res) => {
             const payment = req.body;
-            const result = await paymentCollection.insertOne(payment);
-            res.send(result);
+            const insertedResult = await paymentCollection.insertOne(payment);
+
+            const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } };
+            const deletedResult = await cartCollection.deleteMany(query);
+
+            res.send({ insertedResult, deletedResult });
         })
 
 
