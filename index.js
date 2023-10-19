@@ -154,25 +154,25 @@ async function run() {
         })
 
         //carts related api
-        app.get('/carts', async (req, res) => {
-            const query = {};
-            const result = await cartCollection.find(query).toArray();
-            res.send(result);
-
-        })
-
-        app.get('/carts', async (req, res) => {
+       
+        app.get('/carts', verifyJWT, async (req, res) => {
             const email = req.query.email;
+            
             if (!email) {
                 res.send([]);
             }
             const decodedEmail = req.decoded.email;
+            
             if (decodedEmail !== email) {
                 return res.status(403).json({ "message": "Forbidden Access" })
             }
+
             const query = { email: email };
             const result = await cartCollection.find(query).toArray();
             res.send(result);
+          
+
+
 
         })
 
@@ -206,7 +206,7 @@ async function run() {
         });
 
         //payments related API
-        app.post('/payments',verifyJWT, async (req, res) => {
+        app.post('/payments', verifyJWT, async (req, res) => {
             const payment = req.body;
             const insertedResult = await paymentCollection.insertOne(payment);
 
@@ -216,7 +216,7 @@ async function run() {
             res.send({ insertedResult, deletedResult });
         })
 
-        app.get('/admin-stats', async(req,res) => {
+        app.get('/admin-stats', async (req, res) => {
             //user, product, order, revenue
             const user = await userCollection.estimatedDocumentCount();
             const product = await menuCollection.estimatedDocumentCount();
@@ -224,22 +224,59 @@ async function run() {
 
             const sumAllPrice = await paymentCollection.aggregate([
                 {
-                  $group: {
-                    _id: null,
-                    total: {
-                      $sum: "$price"
+                    $group: {
+                        _id: null,
+                        total: {
+                            $sum: "$price"
+                        }
                     }
-                  }
                 }
-              ]).toArray()
-              const revenue = sumAllPrice[0].total; 
+            ]).toArray()
+            const revenue = sumAllPrice[0].total;
 
-              res.send({
+            res.send({
                 user,
                 product,
                 order,
                 revenue
-              })
+            })
+        })
+
+        app.get('/order-stats', async (req, res) => {
+
+            const pipeline = [
+                {
+                  $lookup: {
+                    from: 'menu',
+                    localField: 'menuItems',
+                    foreignField: '_id',
+                    as: 'menuItemsData'
+                  }
+                },
+                {
+                  $unwind: '$menuItemsData'
+                },
+                {
+                  $group: {
+                    _id: '$menuItemsData.category',
+                    count: { $sum: 1 },
+                    total: { $sum: '$menuItemsData.price' }
+                  }
+                },
+                {
+                  $project: {
+                    category: '$_id',
+                    count: 1,
+                    total: { $round: ['$total', 2] },
+                    _id: 0
+                  }
+                }
+              ];
+        
+              const result = await paymentCollection.aggregate(pipeline).toArray()
+              res.send(result)
+
+
         })
 
 
