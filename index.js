@@ -115,7 +115,7 @@ async function run() {
             const user = await userCollection.findOne(query);
             const result = { admin: user?.role === 'admin' }
             //console.log(result);
-            res.send({ result });
+            res.send(result);
         })
 
         app.delete('/user/delete/:id', async (req, res) => {
@@ -214,6 +214,32 @@ async function run() {
             const deletedResult = await cartCollection.deleteMany(query);
 
             res.send({ insertedResult, deletedResult });
+        })
+
+        app.get('/admin-stats', async(req,res) => {
+            //user, product, order, revenue
+            const user = await userCollection.estimatedDocumentCount();
+            const product = await menuCollection.estimatedDocumentCount();
+            const order = await paymentCollection.estimatedDocumentCount();
+
+            const sumAllPrice = await paymentCollection.aggregate([
+                {
+                  $group: {
+                    _id: null,
+                    total: {
+                      $sum: "$price"
+                    }
+                  }
+                }
+              ]).toArray()
+              const revenue = sumAllPrice[0].total; 
+
+              res.send({
+                user,
+                product,
+                order,
+                revenue
+              })
         })
 
 
