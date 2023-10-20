@@ -154,15 +154,15 @@ async function run() {
         })
 
         //carts related api
-       
+
         app.get('/carts', verifyJWT, async (req, res) => {
             const email = req.query.email;
-            
+
             if (!email) {
                 res.send([]);
             }
             const decodedEmail = req.decoded.email;
-            
+
             if (decodedEmail !== email) {
                 return res.status(403).json({ "message": "Forbidden Access" })
             }
@@ -170,7 +170,7 @@ async function run() {
             const query = { email: email };
             const result = await cartCollection.find(query).toArray();
             res.send(result);
-          
+
 
 
 
@@ -216,9 +216,9 @@ async function run() {
             res.send({ insertedResult, deletedResult });
         })
 
-        app.get('/admin-stats', async (req, res) => {
+        app.get('/admin-stats', verifyJWT, verifyAdmin, async (req, res) => {
             //user, product, order, revenue
-            const user = await userCollection.estimatedDocumentCount();
+            const customer = await userCollection.estimatedDocumentCount();
             const product = await menuCollection.estimatedDocumentCount();
             const order = await paymentCollection.estimatedDocumentCount();
 
@@ -232,50 +232,50 @@ async function run() {
                     }
                 }
             ]).toArray()
-            const revenue = sumAllPrice[0].total;
+            const revenue = sumAllPrice[0].total.toFixed(2);
+
 
             res.send({
-                user,
+                customer,
                 product,
                 order,
                 revenue
             })
         })
 
-        app.get('/order-stats', async (req, res) => {
+        app.get('/order-stats', verifyJWT, verifyAdmin, async (req, res) => {
 
             const pipeline = [
                 {
-                  $lookup: {
-                    from: 'menu',
-                    localField: 'menuItems',
-                    foreignField: '_id',
-                    as: 'menuItemsData'
-                  }
+                    $lookup: {
+                        from: 'menu',
+                        localField: 'menuItems',
+                        foreignField: '_id',
+                        as: 'menuItemsData'
+                    }
                 },
                 {
-                  $unwind: '$menuItemsData'
+                    $unwind: '$menuItemsData'
                 },
                 {
-                  $group: {
-                    _id: '$menuItemsData.category',
-                    count: { $sum: 1 },
-                    total: { $sum: '$menuItemsData.price' }
-                  }
+                    $group: {
+                        _id: '$menuItemsData.category',
+                        quantity: { $sum: 1 },
+                        total: { $sum: '$menuItemsData.price' }
+                    }
                 },
                 {
-                  $project: {
-                    category: '$_id',
-                    count: 1,
-                    total: { $round: ['$total', 2] },
-                    _id: 0
-                  }
+                    $project: {
+                        category: '$_id',
+                        quantity: 1,
+                        total: { $round: ['$total', 2] },
+                        _id: 0
+                    }
                 }
-              ];
-        
-              const result = await paymentCollection.aggregate(pipeline).toArray()
-              res.send(result)
+            ];
 
+            const result = await paymentCollection.aggregate(pipeline).toArray()
+            res.send(result)
 
         })
 
