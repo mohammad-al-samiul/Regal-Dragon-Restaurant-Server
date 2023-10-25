@@ -171,9 +171,6 @@ async function run() {
             const result = await cartCollection.find(query).toArray();
             res.send(result);
 
-
-
-
         })
 
         app.post('/carts', async (req, res) => {
@@ -210,11 +207,56 @@ async function run() {
             const payment = req.body;
             const insertedResult = await paymentCollection.insertOne(payment);
 
+
             const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } };
             const deletedResult = await cartCollection.deleteMany(query);
 
             res.send({ insertedResult, deletedResult });
         })
+
+        //payment history
+
+        app.get('/payment-history', async (req, res) => {
+            try {
+                const email = req.query.email;
+
+                if (!email) {
+                    res.send([]);
+                }
+                const decodedEmail = req.decoded.email;
+
+                if (decodedEmail !== email) {
+                    return res.status(403).json({ "message": "Forbidden Access" })
+                }
+
+                // Step 1: Query the payment collection to get payment items based on email
+                const paymentQuery = { email: email };
+                const paymentItems = await paymentCollection.find(paymentQuery).toArray();
+
+
+                // Step 2: Extract menu item IDs from payment items
+                const menuItems = [];
+                paymentItems.forEach((item) => {
+                    menuItems.push(...item.menuItems);
+                });
+
+
+                // Step 3: Query the menu collection to retrieve menu items based on extracted IDs
+                const menuQuery = {
+                    _id: {
+                        $in: menuItems.map((id) => id),
+                    },
+                };
+                const menu = await menuCollection.find(menuQuery).toArray();
+
+                res.json({ menu });
+            } catch (error) {
+                console.error('Error:', error);
+                res.status(500).json({ error: 'Internal Server Error' });
+            }
+        });
+
+        
 
         app.get('/admin-stats', verifyJWT, verifyAdmin, async (req, res) => {
             //user, product, order, revenue
@@ -233,7 +275,6 @@ async function run() {
                 }
             ]).toArray()
             const revenue = sumAllPrice[0].total.toFixed(2);
-
 
             res.send({
                 customer,
