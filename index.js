@@ -216,47 +216,58 @@ async function run() {
 
         //payment history
 
-        app.get('/payment-history', async (req, res) => {
-            try {
-                const email = req.query.email;
+        app.get('/payment-history', verifyJWT, async (req, res) => {
 
-                if (!email) {
-                    res.send([]);
-                }
-                const decodedEmail = req.decoded.email;
+            const email = req.query.email;
 
-                if (decodedEmail !== email) {
-                    return res.status(403).json({ "message": "Forbidden Access" })
-                }
-
-                // Step 1: Query the payment collection to get payment items based on email
-                const paymentQuery = { email: email };
-                const paymentItems = await paymentCollection.find(paymentQuery).toArray();
-
-
-                // Step 2: Extract menu item IDs from payment items
-                const menuItems = [];
-                paymentItems.forEach((item) => {
-                    menuItems.push(...item.menuItems);
-                });
-
-
-                // Step 3: Query the menu collection to retrieve menu items based on extracted IDs
-                const menuQuery = {
-                    _id: {
-                        $in: menuItems.map((id) => id),
-                    },
-                };
-                const menu = await menuCollection.find(menuQuery).toArray();
-
-                res.json({ menu });
-            } catch (error) {
-                console.error('Error:', error);
-                res.status(500).json({ error: 'Internal Server Error' });
+            if (!email) {
+                res.send([]);
             }
+            const decodedEmail = req.decoded.email;
+
+            if (decodedEmail !== email) {
+                return res.status(403).json({ "message": "Forbidden Access" })
+            }
+
+            // Step 1: Query the payment collection to get payment items based on email
+            const paymentQuery = { email: email };
+            const paymentItems = await paymentCollection.find(paymentQuery).toArray();
+
+
+            // Step 2: Extract menu item IDs from payment items
+            const menuItems = [];
+            paymentItems.forEach((item) => {
+                menuItems.push(...item.menuItems);
+            });
+
+            const count = {};
+            menuItems.forEach(id => {
+                if (count[id]) {
+                    count[id]++;
+                } else {
+                    count[id] = 1;
+                }
+            });
+ 
+            // Step 3: Query the menu collection to retrieve menu items based on extracted IDs
+            const menuQuery = {
+                _id: {
+                    $in: menuItems,
+                },
+            };
+            const menu = await menuCollection.find(menuQuery).toArray();
+
+            // Step 4: Add the count property to each menu item
+            const menuWithCount = menu.map(menuItem => ({
+                ...menuItem,
+                count: count[menuItem._id], // Add the count property
+            }));
+
+            res.json({ menu: menuWithCount })
+
         });
 
-        
+
 
         app.get('/admin-stats', verifyJWT, verifyAdmin, async (req, res) => {
             //user, product, order, revenue
